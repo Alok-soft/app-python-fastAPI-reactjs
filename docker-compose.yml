@@ -1,0 +1,122 @@
+services:
+
+  # =========================
+  # NGINX LOAD BALANCER
+  # =========================
+  nginx:
+    image: nginx:latest
+    container_name: nginx_lb
+
+    ports:
+      - "8080:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+    depends_on:
+      - frontend
+      - app1
+      - app2
+
+    restart: always
+
+
+  # =========================
+  # REACT FRONTEND
+  # =========================
+  frontend:
+    build: ./frontend
+    container_name: react_frontend
+
+    ports:
+      - "5173:5173"
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+    command: npm run dev -- --host
+
+    restart: always
+
+
+  # =========================
+  # FASTAPI APP 1
+  # =========================
+  app1:
+    build: ./backend
+    container_name: fastapi_app1
+
+    env_file:
+      - ./backend/.env
+
+    volumes:
+      - ./backend:/backend
+
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+    depends_on:
+      - postgres
+      - redis
+
+    restart: always
+
+
+  # =========================
+  # FASTAPI APP 2
+  # =========================
+  app2:
+    build: ./backend
+    container_name: fastapi_app2
+
+    env_file:
+      - ./backend/.env
+
+    volumes:
+      - ./backend:/backend
+
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+    depends_on:
+      - postgres
+      - redis
+
+    restart: always
+
+
+  # =========================
+  # POSTGRESQL
+  # =========================
+  postgres:
+    image: postgres:17
+    container_name: postgres_db
+
+    environment:
+      POSTGRES_DB: fastapi_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    restart: always
+
+
+  # =========================
+  # REDIS
+  # =========================
+  redis:
+    image: redis:8-alpine
+    container_name: redis_cache
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis_data:/data
+
+    restart: always
+
+
+volumes:
+  postgres_data:
+  redis_data:
